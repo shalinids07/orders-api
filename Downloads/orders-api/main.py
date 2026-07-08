@@ -16,7 +16,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,6 +42,7 @@ orders_catalog = [
 idempotency_store = {}
 client_requests = defaultdict(deque)
 
+
 # -----------------------
 # Request Model
 # -----------------------
@@ -51,7 +52,7 @@ class OrderIn(BaseModel):
 
 
 # -----------------------
-# Rate Limiter Middleware
+# Rate Limit Middleware
 # -----------------------
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
@@ -74,12 +75,8 @@ async def rate_limit(request: Request, call_next):
 
         return JSONResponse(
             status_code=429,
-            content={
-                "detail": "Rate limit exceeded"
-            },
-            headers={
-                "Retry-After": str(retry_after)
-            }
+            content={"detail": "Rate limit exceeded"},
+            headers={"Retry-After": str(retry_after)}
         )
 
     q.append(now)
@@ -138,7 +135,7 @@ async def list_orders(
         try:
             decoded = json.loads(cursor)
             start = int(decoded.get("index", 0))
-        except:
+        except Exception:
             start = 0
 
     items = orders_catalog[start:start + limit]
@@ -148,11 +145,7 @@ async def list_orders(
     next_index = start + len(items)
 
     if next_index < len(orders_catalog):
-        next_cursor = json.dumps(
-            {
-                "index": next_index
-            }
-        )
+        next_cursor = json.dumps({"index": next_index})
 
     return {
         "items": items,
@@ -166,5 +159,5 @@ async def list_orders(
 @app.get("/")
 async def root():
     return {
-        "status": "ok"
+        "status": "Orders API Running"
     }
